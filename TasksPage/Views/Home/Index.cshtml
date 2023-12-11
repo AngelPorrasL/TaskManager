@@ -1,0 +1,245 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">Task Manager</h1>
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <a href="/Home/Create" class="btn btn-primary">Add New Task</a>
+            </div>
+        </div>
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="searchInput">Search:</label>
+                    <input type="text" class="form-control" id="searchInput" placeholder="Search by title or description">
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="form-group">
+                    <label for="sortSelection">Sort By:</label>
+                    <select class="form-control" id="sortSelection">
+                        <option value=""></option>
+                        <option value="DueDate">Due Date</option>
+                        <option value="Priority">Priority</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <table class="table table-striped" id="tasksTable">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Due Date</th>
+                            <th>Priority</th>
+                            <th>Is Completed?</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var @item in ViewBag.Tasks)
+                        {
+                            <tr class="task-row">
+                                <td>@item.Title</td>
+                                <td>@item.Description</td>
+                                <td>@item.DueDate</td>
+                                <td>@item.Priority</td>
+                                <td>
+                                    @if (@item.IsCompleted == 1)
+                                    {
+                                        <span>Completed</span>
+                                    }
+                                    else
+                                    {
+                                        <form asp-controller="Home" asp-action="UpdateCompletion" method="post">
+                                            <input type="hidden" name="taskId" value="@item.Id" />
+                                            <label>
+                                                <input type="checkbox" name="completed" onchange="this.form.submit()" /> Mark as Completed
+                                            </label>
+                                        </form>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <button class="btn btn-warning mr-2 edit-button" onclick="showEditForm('@item.Id', '@item.Title', '@item.Description', '@item.DueDate', '@item.IsCompleted', '@item.Priority')">Edit</button>
+                                        <form asp-controller="Home" asp-action="Delete" asp-route-taskId="@item.Id" method="post" data-confirm="Are you sure you want to delete this task?">
+                                            <input type="submit" value="Delete" class="btn btn-danger" />
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="edit-form-container" style="display: none;">
+            <div class="container">
+                <h2 class="my-4">Edit Task</h2>
+                <form asp-controller="Home" asp-action="Edit" method="post">
+                    <input type="hidden" name="taskId" id="edit-taskId" value="" />
+
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="edit-title" name="title" required />
+                        <label for="edit-title">Title:</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="edit-description" name="description" required />
+                        <label for="edit-description">Description:</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="date" class="form-control" id="edit-duedate" name="duedate" min="yyyy-MM-dd" required />
+                        <label for="edit-duedate">Due Date:</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <label for="edit-priority">Priority</label>
+                        <select id="edit-priority" name="priority" class="form-control" required>
+                            <option value="">Select Priority</option>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-12">
+                <nav aria-label="Page navigation example">
+                    <ul class="pagination justify-content-end" id="pagination">
+                        <!-- Aquí se mostrarán los botones de paginación -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.4/jquery.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            var tasks = $("#tasksTable tbody tr");
+            var tasksPerPage = 5; // Cambia el número de tareas por página aquí
+            var numberOfPages = Math.ceil(tasks.length / tasksPerPage);
+
+            // Función para mostrar tareas en una página específica
+            function showPage(pageNumber) {
+                tasks.hide();
+                var startIndex = (pageNumber - 1) * tasksPerPage;
+                var endIndex = startIndex + tasksPerPage;
+                tasks.slice(startIndex, endIndex).show();
+            }
+
+            // Crear los botones de paginación
+            for (var i = 1; i <= numberOfPages; i++) {
+                $("#pagination").append(`<li class="page-item"><a class="page-link" href="#">${i}</a></li>`);
+            }
+
+            // Mostrar la primera página por defecto
+            showPage(1);
+
+            // Manejar el clic en los botones de paginación
+            $("#pagination").on("click", "li", function () {
+                var pageNumber = $(this).text();
+                showPage(pageNumber);
+            });
+        });
+    </script>
+
+    <script>
+        function showEditForm(taskId, title, description, duedate, priority) {
+            // Completa los campos del formulario con los datos de la tarjeta
+            document.getElementById('edit-taskId').value = taskId;
+            document.getElementById('edit-title').value = title;
+            document.getElementById('edit-description').value = description;
+            document.getElementById('edit-duedate').value = duedate;
+            document.getElementById('edit-priority').value = priority;
+
+            // Desplaza la página hacia el formulario de edición
+            document.getElementById('edit-form-container').style.display = 'block';
+            window.location.href = '#edit-form-container'; // Desplaza la página
+        }
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            $("form[data-confirm]").submit(function () {
+                var message = $(this).data("confirm");
+                if (!confirm(message)) {
+                    return false; // Cancela el envío del formulario si el usuario no confirma
+                }
+            });
+        });
+    </script>
+
+    <script>
+        // Obtener la fecha actual en el formato requerido para el campo 'DueDate'
+        var today = new Date();
+        var dd = String(today.getDate()).padStart(2, '0');
+        var mm = String(today.getMonth() + 1).padStart(2, '0'); // Enero es 0
+        var yyyy = today.getFullYear();
+        var minDate = yyyy + '-' + mm + '-' + dd;
+
+        // Establecer la fecha mínima para el campo 'DueDate'
+        document.getElementById("edit-duedate").min = minDate;
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            $("#searchInput").on("keyup", function () {
+                var searchText = $(this).val().toLowerCase();
+                $("#tasksTable tbody tr").each(function () {
+                    var titleText = $(this).find("td:nth-child(1)").text().toLowerCase();
+                    var descriptionText = $(this).find("td:nth-child(2)").text().toLowerCase();
+                    if (titleText.indexOf(searchText) !== -1 || descriptionText.indexOf(searchText) !== -1) {
+                        $(this).show();
+                    } else {
+                        $(this).hide();
+                    }
+                });
+            });
+        });
+    </script>
+
+    <script>
+        $(document).ready(function () {
+            $("#sortSelection").change(function () {
+                var selectedValue = $(this).val();
+                var $tbody = $("#tasksTable tbody");
+
+                if (selectedValue === "DueDate") {
+                    // Ordenar por fecha de vencimiento
+                    var rows = $tbody.find("tr").get();
+                    rows.sort(function (a, b) {
+                        var dateA = new Date($(a).find("td:nth-child(3)").text());
+                        var dateB = new Date($(b).find("td:nth-child(3)").text());
+                        return dateA - dateB;
+                    });
+                } else if (selectedValue === "Priority") {
+                    // Ordenar por prioridad
+                    var rows = $tbody.find("tr").get();
+                    rows.sort(function (a, b) {
+                        var priorityOrder = { "High": 1, "Medium": 2, "Low": 3 };
+                        var priorityA = $(a).find("td:nth-child(4)").text();
+                        var priorityB = $(b).find("td:nth-child(4)").text();
+                        return priorityOrder[priorityA] - priorityOrder[priorityB];
+                    });
+                }
+
+                $.each(rows, function (index, row) {
+                    $tbody.append(row);
+                });
+            });
+        });
+    </script>
+</body>
